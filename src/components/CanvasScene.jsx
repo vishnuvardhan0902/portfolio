@@ -35,7 +35,7 @@ export default function CanvasScene(){
     const scene = new THREE.Scene()
     sceneRef.current = scene
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000)
-    const initialCameraPosition = new THREE.Vector3(0,20,80)
+    const initialCameraPosition = new THREE.Vector3(103, -30, 0) // More zoomed out position
     camera.position.copy(initialCameraPosition)
 
     const renderer = new THREE.WebGLRenderer({ antialias:true })
@@ -201,10 +201,10 @@ export default function CanvasScene(){
     const onModelsReady = ()=>{
       // hide loader is handled by loader.remove when last model loads
       
-      // Auto-navigate to "about" section after a brief delay
+      // Auto-navigate to "about" section after a brief delay to show the overview first
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('navigateTo', { detail: { name: 'about' } }))
-      }, 1000) // 1 second delay after loading
+      }, 1500) // 1.5 second delay to appreciate the overview
     }
     window.addEventListener('navigateTo', onNavigate)
     window.addEventListener('modelsReady', onModelsReady)
