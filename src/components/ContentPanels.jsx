@@ -223,7 +223,7 @@ export default function ContentPanels(){
           <p className="text-lg mb-4">Feel free to reach out for collaborations or just a friendly chat!</p>
           <p className="mb-2"><strong>Email:</strong> <a href="mailto:vishnuvardhan0290@gmail.com" className="text-blue-400 hover:underline">vishnuvardhan0290@gmail.com</a></p>
           <div className="flex justify-center space-x-4 mt-4">
-            <a href="https://www.linkedin.com/in/vishnu-vardhan-marishetty/" target="_blank" className="text-blue-400 hover:text-blue-300">LinkedIn</a>
+            <a href="https://www.linkedin.com/in/vishnu-vardhan-mvv09" target="_blank" className="text-blue-400 hover:text-blue-300">LinkedIn</a>
             <a href="https://github.com/vishnuvardhan0902" target="_blank" className="text-blue-400 hover:text-blue-300">GitHub</a>
           </div>
         </div>
