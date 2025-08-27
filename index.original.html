@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vishnu Vardhan - Space Portfolio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            cursor: grab;
+        }
+        body:active { cursor: grabbing; }
+        #bg {
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: -1;
+        }
+
+        .content-section {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: radial-gradient(circle, rgba(20, 28, 51, 0.9) 0%, rgba(0, 0, 0, 0.8) 100%);
+            border: 1px solid rgba(129, 173, 255, 0.3);
+            padding: 2rem; border-radius: 1rem;
+            width: 90%; max-width: 800px; max-height: 80vh;
+            overflow-y: auto; opacity: 0; visibility: hidden;
+            transition: opacity 0.5s, visibility 0.5s;
+            backdrop-filter: blur(10px);
+            pointer-events: none;
+        }
+        .content-section.visible {
+            opacity: 1; visibility: visible; pointer-events: auto;
+        }
+        .close-btn { position: absolute; top: 1rem; right: 1rem; cursor: pointer; font-size: 1.5rem; }
+        .instruction {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.5); padding: 10px 20px; border-radius: 20px;
+            font-size: 0.9rem; pointer-events: none; transition: opacity 0.5s;
+        }
+
+        /* Navigation */
+        .nav-item {
+            border-radius: 0.5rem;
+            transition: transform 220ms cubic-bezier(.2,.9,.2,1), box-shadow 220ms ease, background 220ms ease, border-color 220ms ease;
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+            will-change: transform, box-shadow;
+        }
+        .nav-item:hover, .nav-item:focus {
+            transform: translateX(6px) scale(1.02);
+            box-shadow: 0 10px 30px rgba(2,6,23,0.55), 0 2px 6px rgba(0,0,0,0.45);
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.007));
+            border-left: 3px solid rgba(59,130,246,0.95);
+            outline: none;
+        }
+        .nav-item img { transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease; box-shadow: none; }
+        .nav-item:hover img {
+            transform: scale(1.12);
+            box-shadow: 0 8px 20px rgba(2,6,23,0.45);
+            border-color: rgba(59,130,246,0.95);
+        }
+        .nav-item span { color: #e6eefc; font-weight: 600; }
+
+        /* ALWAYS visible nav layout */
+        #navigation { z-index: 70; }
+        #navItems { display: flex; gap: 0.5rem; }
+        @media (max-width: 750px) {
+            /* Navigation layout for small screens */
+            #navigation { left: 50%; transform: translateX(-50%); top: 0.75rem; }
+            #navItems { flex-direction: row; flex-wrap: wrap; justify-content: center; }
+            #navItems .nav-item { padding: 0.5rem 0.7rem; }
+            #navItems .nav-item img { width: 28px; height: 28px; }
+            #navItems .nav-item span { font-size: 0.88rem; }
+            /* Mobile: hide full nav items by default and show an Explore button */
+            #navItems { display: none; }
+            .explore-btn { display: inline-flex; }
+            /* ensure explore button is fixed and visible above canvas */
+            .explore-btn { position: fixed; top: 12px; left: 12px; z-index: 100; }
+        }
+        @media (min-width: 751px) {
+            #navigation { left: 5rem; top: 50%; transform: translateY(-50%); }
+            #navItems { flex-direction: column; }
+            #navItems .nav-item { padding: 0.6rem 0.8rem; }
+            #navItems .nav-item img { width: 34px; height: 34px; }
+            #navItems .nav-item span { font-size: 0.95rem; }
+        }
+
+        /* Mobile explore button (hidden on larger screens) */
+        .explore-btn{
+            display:none; /* default hidden; shown on small screens via media query */
+            align-items:center; gap:8px; padding:8px 12px; border-radius:10px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+            color:#e6eefc; border:1px solid rgba(255,255,255,0.04); cursor:pointer; font-weight:600;
+            -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+            z-index: 75;
+        }
+
+        /* Mobile backdrop and dropdown */
+        #mobileBackdrop{ position: fixed; inset:0; background: rgba(2,6,23,0.45); backdrop-filter: blur(6px); z-index:40; display:none; opacity:0; pointer-events:none }
+        #mobileDropdown{ position: fixed; left:50%; top:12vh; transform: translateX(-50%) scale(.96); width: min(92%, 320px); background: linear-gradient(180deg, rgba(6,8,20,0.98), rgba(8,10,22,0.94)); border-radius:12px; padding:12px; box-shadow:0 20px 60px rgba(2,6,23,0.6); z-index:41; display:none; opacity:0 }
+        .backdrop-visible{ display:block; pointer-events:auto; opacity:1; transition: opacity 300ms ease }
+        .dropdown-open{ display:block; opacity:1; transform: translateX(-50%) scale(1); transition: transform 380ms cubic-bezier(.2,.9,.2,1), opacity 300ms ease }
+
+        /* Single-icon music toggle (always visible) */
+        #musicToggle{
+            position:fixed; top:.75rem; right:.75rem;
+            display:inline-flex; align-items:center; justify-content:center;
+            gap:.5rem; padding:.45rem .55rem; border-radius:999px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+            border:1px solid rgba(255,255,255,0.06); color:#e6eefc; font-weight:600; cursor:pointer;
+            -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+            box-shadow:0 6px 20px rgba(2,6,23,0.5); z-index:85;
+        }
+        #musicToggle:hover{ border-color:rgba(59,130,246,0.55); }
+        #musicToggle.playing{ background:linear-gradient(135deg, rgba(59,130,246,0.12), rgba(59,130,246,0.06)); border-color:rgba(59,130,246,0.9); }
+        #musicToggle.unavailable{ opacity:.6; cursor:not-allowed; filter:grayscale(40%); }
+        #musicIcon{ width:18px; height:18px; display:inline-block; line-height:0; }
+        .sr-only{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+        /* Larger music toggle on big screens */
+        @media (min-width: 991px) {
+            #musicToggle{ top:1rem; right:1rem; padding:.6rem .7rem; box-shadow:0 8px 28px rgba(2,6,23,0.55); }
+            #musicIcon{ width:22px; height:22px; }
+        }
+        @media (min-width: 1200px) {
+            #musicToggle{ width:64px; height:64px; padding:0; border-radius:14px; display:inline-flex; align-items:center; justify-content:center; }
+            #musicIcon{ width:28px; height:28px; }
+            /* ensure embedded SVG scales nicely */
+            #musicIcon svg{ width:28px; height:28px; display:block; }
+        }
+        /* Ensure explore button is visible on small screens (override cascade) */
+        @media (max-width: 750px) {
+            .explore-btn { display: inline-flex; }
+        }
+    </style>
+</head>
+<body class="bg-black text-white">
+    <canvas id="bg"></canvas>
+
+    <div id="instruction" class="instruction">Click and drag to explore. Use the side menu or click a planet.</div>
+
+    <!-- Side Navigation (ALWAYS visible) -->
+    <div id="navigation" class="fixed top-4 left-1/2 -translate-x-1/2 flex flex-row gap-2 z-20 md:top-1/2 md:left-5 md:-translate-x-0 md:-translate-y-1/2 md:flex-col">
+            <!-- Explore button: visible on small screens only -->
+            <button id="exploreBtn" class="explore-btn" aria-controls="navItems" aria-expanded="false" title="Open navigation">
+                <span>Explore</span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+
+            <div id="navItems" class="flex flex-row gap-2 md:flex-col">
+                <!-- Buttons will be generated by JavaScript -->
+            </div>
+    </div>
+
+    <!-- Mobile backdrop and dropdown (injected for small screens) -->
+    <div id="mobileBackdrop" tabindex="-1" aria-hidden="true"></div>
+    <div id="mobileDropdown" aria-hidden="true">
+        <div id="mobileNavItems" class="flex flex-col gap-2"></div>
+    </div>
+
+    <!-- Music Toggle (single icon) -->
+    <button id="musicToggle" aria-pressed="false" title="Toggle background music">
+        <span id="musicIcon" aria-hidden="true"></span>
+        <span class="sr-only">Toggle music</span>
+    </button>
+
+    <!-- Background music audio -->
+    <audio id="bgMusic" loop preload="auto" src="assets/interstaller.mp3" crossorigin="anonymous"></audio>
+
+    <div id="loader" class="fixed top-0 left-0 w-full h-full bg-black flex justify-center items-center z-50">
+        <div class="text-white text-2xl">Loading Universe...</div>
+    </div>
+
+    <!-- Content Sections -->
+    <div id="about" class="content-section">
+        <span class="close-btn">&times;</span>
+        <div class="text-center">
+            <h1 class="text-2xl md:text-4xl font-semibold mb-2">MARISHETTY VISHNU VARDHAN</h1>
+            <p class="text-lg md:text-xl text-blue-300 mb-4">Undergraduate (2022-26) | B.Tech in Computer Science and Business Systems</p>
+            <p class="max-w-3xl mx-auto text-gray-300">A passionate and driven student with a strong foundation in computer science and a keen interest in developing innovative solutions. I thrive in collaborative environments and am always eager to learn and apply new technologies to solve real-world problems.</p>
+        </div>
+    </div>
+    <div id="education" class="content-section">
+        <span class="close-btn">&times;</span>
+        <h2 class="text-3xl font-bold mb-6 text-center">Education</h2>
+        <div class="text-center">
+            <h3 class="text-2xl font-semibold text-blue-400">VNR Vignana Jyothi Institute of Engineering and Technology</h3>
+            <p class="text-lg text-gray-300">Hyderabad, India</p>
+            <p class="mt-2 text-gray-400">Bachelor of Technology in Computer Science and Business Systems</p>
+            <p class="mt-1 text-gray-400">Nov 2022 - May 2026</p>
+            <p class="mt-4 text-2xl font-bold text-white">CGPA: 8.62</p>
+        </div>
+    </div>
+    <div id="projects" class="content-section">
+        <span class="close-btn">&times;</span>
+        <h2 class="text-3xl font-bold mb-6 text-center">Projects</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="bg-gray-800 p-4 rounded-lg"><h3 class="text-xl font-semibold text-blue-400">The Sacred Drop</h3><p class="text-gray-400 mt-2">An educational water conservation game using Unity with real-time leaderboards and dynamic quiz content from the Gemini API. Designed 3D assets in Blender.</p><p class="mt-2 text-sm"><strong>Tech:</strong> Unity, C#, Gemini API, Blender, Node.js, MongoDB</p></div>
+            <div class="bg-gray-800 p-4 rounded-lg"><h3 class="text-xl font-semibold text-blue-400">Endeavor</h3><p class="text-gray-400 mt-2">An AI-driven interview prep platform that generates skill-based assessments from resumes using RAG pipelines for domain-specific question generation.</p><p class="mt-2 text-sm"><strong>Tech:</strong> Next.js, Node.js, Python, FastAPI, MongoDB, LangChain, Vector DB</p></div>
+            <div class="bg-gray-800 p-4 rounded-lg col-span-1 md:col-span-2"><h3 class="text-xl font-semibold text-blue-400">AR Indoor Navigation</h3><p class="text-gray-400 mt-2">An AR navigation system using NavMesh pathfinding and LiDAR-based environmental mapping for real-time guidance.</p><p class="mt-2 text-sm"><strong>Tech:</strong> Unity, NavMeshAI, LiDAR, Blender, C#</p></div>
+        </div>
+    </div>
+    <div id="skills" class="content-section">
+        <span class="close-btn">&times;</span>
+        <h2 class="text-3xl font-bold mb-6 text-center">Skills</h2>
+        <div class="flex flex-wrap justify-center gap-4">
+            <div class="bg-gray-800 p-4 rounded-lg w-full md:w-auto"><h3 class="text-xl font-semibold text-blue-400 mb-2">Programming</h3><p>Python, C++, Java, SQL, C, JavaScript</p></div>
+            <div class="bg-gray-800 p-4 rounded-lg w-full md:w-auto"><h3 class="text-xl font-semibold text-blue-400 mb-2">Development</h3><p>NextJS, NodeJS, MongoDB, HTML, CSS, LangChain, RAG, OOP, DBMS</p></div>
+            <div class="bg-gray-800 p-4 rounded-lg w-full md:w-auto"><h3 class="text-xl font-semibold text-blue-400 mb-2">Tools</h3><p>Unity, GitHub, Power BI</p></div>
+            <div class="bg-gray-800 p-4 rounded-lg w-full md:w-auto"><h3 class="text-xl font-semibold text-blue-400 mb-2">Soft Skills</h3><p>Problem-solving, Teamwork, Adaptability, Communication</p></div>
+        </div>
+    </div>
+    <div id="leadership" class="content-section">
+        <span class="close-btn">&times;</span>
+        <h2 class="text-3xl font-bold mb-6 text-center">Leadership Experience</h2>
+        <ul class="list-disc list-inside text-gray-300 mt-2 space-y-3">
+            <li><strong>VJ TEATRO:</strong> Led the Editing Department, conducted video editing workshops, and organized short film contests to enhance creative skills among participants.</li>
+            <li><strong>VNR DESIGN-A-THON:</strong> Coordinated and managed a 24-hour national-level hackathon, facilitating participation from multiple states across India.</li>
+            <li><strong>TEDxVNRVJIET:</strong> Served on the TEDx organizing committee for TEDxVNRVJIET 2023; currently part of the 2024 committee.</li>
+        </ul>
+    </div>
+    <div id="contact" class="content-section">
+        <span class="close-btn">&times;</span>
+        <h2 class="text-3xl font-bold mb-6 text-center">Get In Touch</h2>
+        <div class="text-center">
+            <p class="text-lg mb-4">Feel free to reach out for collaborations or just a friendly chat!</p>
+            <p class="mb-2"><strong>Email:</strong> <a href="mailto:vishnuvardhan0290@gmail.com" class="text-blue-400 hover:underline">vishnuvardhan0290@gmail.com</a></p>
+            <div class="flex justify-center space-x-4 mt-4">
+                <a href="https://www.linkedin.com/in/vishnu-vardhan-marishetty/" target="_blank" class="text-blue-400 hover:text-blue-300">LinkedIn</a>
+                <a href="https://github.com/vishnuvardhan0902" target="_blank" class="text-blue-400 hover:text-blue-300">GitHub</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- THREE.js Setup ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.querySelector('#bg'), antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        const initialCameraPosition = new THREE.Vector3(0, 20, 80);
+        camera.position.copy(initialCameraPosition);
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.screenSpacePanning = false;
+        controls.minDistance = 10;
+        controls.maxDistance = 200;
+        const textureLoader = new THREE.TextureLoader();
+        const gltfLoader = new THREE.GLTFLoader();
+
+        // --- Space Background ---
+        const spaceTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/starry-deep-space-bg.jpg');
+        const spaceGeometry = new THREE.SphereGeometry(500, 64, 64);
+        const spaceMaterial = new THREE.MeshBasicMaterial({ map: spaceTexture, side: THREE.BackSide });
+        const spaceBackground = new THREE.Mesh(spaceGeometry, spaceMaterial);
+        scene.add(spaceBackground);
+
+        // --- Lighting ---
+        const pointLight = new THREE.PointLight(0xffffff, 1.5);
+        pointLight.position.set(20, 20, 30);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+        scene.add(pointLight, ambientLight);
+
+        // --- Starry Foreground ---
+        const starVertices = [];
+        for (let i = 0; i < 15000; i++) {
+            const [x, y, z] = Array(3).fill().map(() => THREE.MathUtils.randFloatSpread(1000));
+            starVertices.push(x, y, z);
+        }
+        const starGeometry = new THREE.BufferGeometry();
+        starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+        const starMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.5 });
+        const stars = new THREE.Points(starGeometry, starMaterial);
+        scene.add(stars);
+
+        // --- Planet Creation ---
+        const planets = [];
+        const planetGroup = new THREE.Group();
+        scene.add(planetGroup);
+        let loadedPlanets = 0;
+        const totalPlanets = 6;
+
+        function createPlanet(name, modelUrl, position, scale = 1, ring) {
+            gltfLoader.load(
+                modelUrl,
+                (gltf) => {
+                    const planet = gltf.scene;
+                    planet.scale.setScalar(scale);
+                    planet.position.set(position.x, position.y, position.z);
+                    planet.rotation.z = Math.random() * Math.PI;
+                    planet.userData = { name: name, modelUrl: modelUrl };
+                    planetGroup.add(planet);
+                    planets.push(planet);
+
+                    if (ring) {
+                        const ringTexture = textureLoader.load(ring.textureUrl);
+                        const ringGeometry = new THREE.RingGeometry(ring.innerRadius, ring.outerRadius, 64);
+                        const pos = ringGeometry.attributes.position;
+                        const v3 = new THREE.Vector3();
+                        for (let i = 0; i < pos.count; i++){
+                            v3.fromBufferAttribute(pos, i);
+                            ringGeometry.attributes.uv.setXY(i, v3.length() < ring.innerRadius + 0.1 ? 0 : 1, 1);
+                        }
+                        const ringMaterial = new THREE.MeshBasicMaterial({ map: ringTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+                        const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+                        ringMesh.rotation.x = -0.5 * Math.PI;
+                        planet.add(ringMesh);
+                    }
+
+                    loadedPlanets++;
+                    if (loadedPlanets === totalPlanets) {
+                        document.getElementById('loader').style.display = 'none';
+                        createNavigation();
+                    }
+                },
+                (progress) => {
+                    if (progress.total) {
+                        // console.log(`Loading ${name}: ${Math.round(progress.loaded / progress.total * 100)}%`);
+                    }
+                },
+                (error) => {
+                    console.error(`Error loading ${name}:`, error);
+                    createFallbackPlanet(name, position, scale, ring);
+                    loadedPlanets++;
+                    if (loadedPlanets === totalPlanets) {
+                        document.getElementById('loader').style.display = 'none';
+                        createNavigation();
+                    }
+                }
+            );
+        }
+
+        function createFallbackPlanet(name, position, scale, ring) {
+            const geometry = new THREE.SphereGeometry(2 * scale, 32, 32);
+            const material = new THREE.MeshStandardMaterial({
+                color: new THREE.Color().setHSL(Math.random(), 0.7, 0.5),
+                roughness: 0.8, metalness: 0.1
+            });
+            const planet = new THREE.Mesh(geometry, material);
+            planet.position.set(position.x, position.y, position.z);
+            planet.rotation.z = Math.random() * Math.PI;
+            planet.userData = { name: name, modelUrl: 'fallback' };
+            planetGroup.add(planet);
+            planets.push(planet);
+
+            if (ring) {
+                const ringTexture = textureLoader.load(ring.textureUrl);
+                const ringGeometry = new THREE.RingGeometry(ring.innerRadius, ring.outerRadius, 64);
+                const pos = ringGeometry.attributes.position;
+                const v3 = new THREE.Vector3();
+                for (let i = 0; i < pos.count; i++){
+                    v3.fromBufferAttribute(pos, i);
+                    ringGeometry.attributes.uv.setXY(i, v3.length() < ring.innerRadius + 0.1 ? 0 : 1, 1);
+                }
+                const ringMaterial = new THREE.MeshBasicMaterial({ map: ringTexture, side: THREE.DoubleSide, transparent: true, opacity: 0.8 });
+                const ringMesh = new THREE.Mesh(ringGeometry, ringMaterial);
+                ringMesh.rotation.x = -0.5 * Math.PI;
+                planet.add(ringMesh);
+            }
+        }
+
+        // textures
+        const textureBase = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/';
+
+        // Planets
+        createPlanet('contact', 'assets/mercury.glb',   { x: -60, y:   0, z: -8  }, 5);
+        createPlanet('skills',  'assets/venus.glb',     { x: -35, y:  30, z: -12 }, 5);
+        createPlanet('about',   'assets/earth.glb',     { x:   0, y:  40, z: -16 }, 0.1);
+        createPlanet('projects','assets/mars.glb',      { x:  50, y: 1.2, z: -20 }, 20);
+        createPlanet('leadership','assets/jupiter.glb', { x:  40, y: -40, z: -26 }, 7);
+        createPlanet('education','assets/saturn.glb',   { x: -10, y: -30, z:   0 }, 0.1, { textureUrl: textureBase + 'saturnringcolor.jpg', innerRadius: 6, outerRadius: 10 });
+
+        // --- Comet Creation ---
+        function createComet() {
+            const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+            const headMaterial = new THREE.MeshBasicMaterial({ color: 0xaaffff });
+            const cometHead = new THREE.Mesh(headGeometry, headMaterial);
+            const tailMaterial = new THREE.LineBasicMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.6 });
+            const points = [new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0, -15)];
+            const tailGeometry = new THREE.BufferGeometry().setFromPoints(points);
+            const cometTail = new THREE.Line(tailGeometry, tailMaterial);
+            cometHead.add(cometTail);
+            const [startX, startY] = Array(2).fill().map(() => THREE.MathUtils.randFloatSpread(200));
+            const startZ = -250;
+            cometHead.position.set(startX, startY, startZ);
+            const [endX, endY] = [-startX, -startY];
+            const endZ = 250;
+            scene.add(cometHead);
+            gsap.to(cometHead.position, {
+                x: endX, y: endY, z: endZ,
+                duration: THREE.MathUtils.randFloat(5, 10),
+                ease: "power1.in",
+                onComplete: () => { scene.remove(cometHead); }
+            });
+        }
+        setInterval(createComet, 4000);
+
+        // --- Create Side Navigation (ALWAYS visible) ---
+        function createNavigation() {
+            const navItemsContainer = document.getElementById('navItems');
+            const mobileNavContainer = document.getElementById('mobileNavItems');
+
+            const planetThumbnails = {
+                'about': 'cover_photos/Earth.png',
+                'education': 'cover_photos/Saturn.png',
+                'projects': 'cover_photos/Mars.png',
+                'skills': 'cover_photos/Venus.png',
+                'leadership': 'cover_photos/Jupyter.png',
+                'contact': 'cover_photos/Mercury.png'
+            };
+
+            const navOrder = ['about','education','skills','projects','leadership','contact'];
+            navOrder.forEach(key => {
+                const planet = planets.find(p => p.userData && p.userData.name === key);
+                if(!planet) return;
+                const navItem = document.createElement('div');
+                const name = planet.userData.name;
+                const thumbnailUrl = planetThumbnails[name] || 'https://via.placeholder.com/64x64/333333/ffffff?text=' + name.charAt(0).toUpperCase();
+
+                navItem.className = 'nav-item flex items-center gap-4 cursor-pointer p-1';
+                navItem.dataset.planet = name;
+                navItem.setAttribute('tabindex', '0');
+                navItem.innerHTML = `
+                    <img src="${thumbnailUrl}" class="w-6 h-6 md:w-8 md:h-8 rounded-full object-cover border-2 border-transparent transition-all duration-300">
+                    <span class="text-white whitespace-nowrap text-xs md:text-sm ml-2 md:ml-3">${name.charAt(0).toUpperCase() + name.slice(1)}</span>
+                `;
+
+                navItem.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); moveCamera(planet); }
+                });
+                navItem.addEventListener('click', (e) => { e.stopPropagation(); moveCamera(planet); });
+
+                navItemsContainer.appendChild(navItem);
+                // also append a mobile-friendly copy
+                if (mobileNavContainer) {
+                    const m = navItem.cloneNode(true);
+                    m.classList.remove('md:flex');
+                    mobileNavContainer.appendChild(m);
+                    m.addEventListener('click', (e) => { e.stopPropagation(); moveCamera(planet); closeMobileDropdown(); });
+                    m.addEventListener('keydown', (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); moveCamera(planet); closeMobileDropdown(); } });
+                }
+            });
+        }
+
+        // --- Mobile dropdown controls ---
+        const exploreBtn = document.getElementById('exploreBtn');
+        const mobileBackdrop = document.getElementById('mobileBackdrop');
+        const mobileDropdown = document.getElementById('mobileDropdown');
+        let dropdownOpen = false;
+
+        function openMobileDropdown() {
+            if (dropdownOpen) return;
+            dropdownOpen = true;
+            exploreBtn.setAttribute('aria-expanded', 'true');
+            mobileBackdrop.classList.add('backdrop-visible');
+            mobileBackdrop.style.display = 'block';
+            mobileDropdown.classList.add('dropdown-open');
+            mobileDropdown.style.display = 'block';
+            // animate using GSAP for smoother blur and scale
+            gsap.fromTo(mobileBackdrop, { opacity: 0 }, { opacity: 1, duration: 0.32, ease: 'power1.out' });
+            gsap.fromTo(mobileDropdown, { opacity: 0, scale: 0.96 }, { opacity: 1, scale: 1, duration: 0.38, ease: 'back.out(0.6)' });
+            // blur the canvas and content behind
+            document.getElementById('bg').style.filter = 'blur(4px)';
+            document.querySelectorAll('.content-section').forEach(s => s.style.filter = 'blur(3px)');
+        }
+
+        function closeMobileDropdown() {
+            if (!dropdownOpen) return;
+            dropdownOpen = false;
+            exploreBtn.setAttribute('aria-expanded', 'false');
+            gsap.to(mobileBackdrop, { opacity: 0, duration: 0.22, ease: 'power1.in', onComplete: () => { mobileBackdrop.classList.remove('backdrop-visible'); mobileBackdrop.style.display = 'none'; } });
+            gsap.to(mobileDropdown, { opacity: 0, scale: 0.96, duration: 0.24, ease: 'power1.in', onComplete: () => { mobileDropdown.classList.remove('dropdown-open'); mobileDropdown.style.display = 'none'; } });
+            document.getElementById('bg').style.filter = '';
+            document.querySelectorAll('.content-section').forEach(s => s.style.filter = '');
+        }
+
+        exploreBtn.addEventListener('click', (e) => { e.stopPropagation(); if (dropdownOpen) closeMobileDropdown(); else openMobileDropdown(); });
+        mobileBackdrop.addEventListener('click', closeMobileDropdown);
+        window.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') closeMobileDropdown(); });
+        // close dropdown when clicking the main canvas (helpful when user taps outside)
+        renderer.domElement.addEventListener('pointerdown', () => { if (dropdownOpen) closeMobileDropdown(); });
+
+        // --- Animation Loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            planets.forEach(p => { p.rotation.y += 0.001; });
+            stars.rotation.y += 0.0001;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        // --- Camera Movement & Interaction ---
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+        let isZoomed = false;
+
+        const planetCameraMultiplier = {
+            'about': 2.6, 'education': 3.2, 'projects': 3.8,
+            'skills': 0.6, 'leadership': 3.0, 'contact': 4.0
+        };
+
+        const planetCinematic = {
+            contact: { fovTarget: 36, distanceMul: 1.0, xFactor: 0.12, yFactor: 0.06, duration: 1.4 },
+            skills:  { fovTarget: 38, distanceMul: 1.0, xFactor: 0,    yFactor: 1,    duration: 1.3 },
+            about:   { fovTarget: 34, distanceMul: 1.0, xFactor: 0.15, yFactor: 0.08, duration: 1.3 },
+            projects:{ fovTarget: 40, distanceMul: 1.0, xFactor: 0.10, yFactor: 0.06, duration: 1.5 },
+            leadership:{ fovTarget: 42, distanceMul: 1.0, xFactor: 0.18, yFactor: 0.10, duration: 1.6 },
+            education:{ fovTarget: 36, distanceMul: 1.0, xFactor: 0.16, yFactor: 0.08, duration: 1.6 }
+        };
+
+        function moveCamera(targetPlanet) {
+            const targetPosition = new THREE.Vector3();
+            targetPlanet.getWorldPosition(targetPosition);
+
+            const box = new THREE.Box3().setFromObject(targetPlanet);
+            const size = box.getSize(new THREE.Vector3());
+            const base = Math.max(size.x, size.y, size.z) || 1;
+            const name = targetPlanet.userData && targetPlanet.userData.name ? targetPlanet.userData.name : '';
+
+            const cfg = planetCinematic[name] || { fovTarget: 36, distanceMul: (planetCameraMultiplier[name] || 2.5), xFactor: 0.12, yFactor: 0.06, duration: 1.4 };
+            const offset = base * cfg.distanceMul;
+
+            const cameraTargetPosition = new THREE.Vector3(
+                targetPosition.x + (offset * cfg.xFactor),
+                targetPosition.y + (offset * cfg.yFactor),
+                targetPosition.z + offset
+            );
+
+            const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } });
+            tl.addLabel('start')
+              .to(document.getElementById('instruction'), { duration: 0.35, opacity: 0 }, 'start')
+              .call(() => {
+                    controls.enabled = false;
+                    document.querySelectorAll('.content-section.visible').forEach(s => s.classList.remove('visible'));
+                }, null, 'start')
+              .to(camera, { duration: Math.min(0.9, cfg.duration * 0.6), fov: cfg.fovTarget, onUpdate: () => camera.updateProjectionMatrix() }, 'start+=0.05')
+              .to(camera.position, { duration: cfg.duration, x: cameraTargetPosition.x, y: cameraTargetPosition.y, z: cameraTargetPosition.z }, 'start+=0.05')
+              .to(controls.target, { duration: cfg.duration, x: targetPosition.x, y: targetPosition.y, z: targetPosition.z, onUpdate: () => controls.update() }, 'start+=0.05')
+              .call(() => {
+                  const section = document.getElementById(name);
+                  if (section) section.classList.add('visible');
+                  isZoomed = true;
+              });
+        }
+
+        function zoomOut() {
+            const tl = gsap.timeline({ defaults: { ease: 'power3.inOut' } });
+            tl.call(() => { document.querySelectorAll('.content-section.visible').forEach(s => s.classList.remove('visible')); })
+              .to(camera, { duration: 1.2, fov: 75, onUpdate: () => camera.updateProjectionMatrix() }, 0)
+              .to(camera.position, { duration: 1.6, x: initialCameraPosition.x, y: initialCameraPosition.y, z: initialCameraPosition.z }, 0)
+              .to(controls.target, { duration: 1.6, x: 0, y: 0, z: 0, onUpdate: () => controls.update() }, 0)
+              .call(() => {
+                  controls.enabled = true;
+                  isZoomed = false;
+                  document.getElementById('instruction').style.opacity = '1';
+              });
+        }
+
+        // Planet click-to-zoom disabled: keep a no-op handler for compatibility
+        function onCanvasClick(event) {
+            // intentionally no-op — planet click-to-zoom functionality removed
+            return;
+        }
+
+        // --- Event Listeners ---
+        document.querySelectorAll('.close-btn').forEach(btn => { btn.addEventListener('click', zoomOut); });
+    // renderer canvas click handler removed to disable planet click interactions
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // --- Background music (SINGLE ICON UI) ---
+        (function() {
+            const music = document.getElementById('bgMusic');
+            const btn = document.getElementById('musicToggle');
+            const icon = document.getElementById('musicIcon');
+            const storageKey = 'vv_bg_music_playing';
+
+            const ICON_ON = `
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M5 9v6h4l5 4V5L9 9H5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M16 7a4 4 0 010 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>`;
+            const ICON_OFF = `
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <path d="M9 9v6h4l5 4V5l-5 4H9z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M2 2l20 20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+                </svg>`;
+
+            const setIcon = (playing) => { icon.innerHTML = playing ? ICON_ON : ICON_OFF; };
+            const setPlayingUI = (playing) => {
+                btn.setAttribute('aria-pressed', playing ? 'true' : 'false');
+                btn.classList.toggle('playing', playing);
+                btn.classList.remove('unavailable');
+                setIcon(playing);
+            };
+            const setUnavailable = () => {
+                btn.classList.add('unavailable');
+                btn.setAttribute('aria-pressed', 'false');
+            };
+
+            const saved = localStorage.getItem(storageKey);
+            const wantPlay = saved === '1';
+            setIcon(false);
+
+            const tryPlay = async () => {
+                try { await music.play(); }
+                catch (err) {
+                    setPlayingUI(false);
+                    localStorage.setItem(storageKey, '0');
+                    console.log('Autoplay prevented or failed:', err && err.message);
+                }
+            };
+
+            music.addEventListener('playing', () => {
+                setPlayingUI(true);
+                localStorage.setItem(storageKey, '1');
+            });
+            music.addEventListener('pause', () => {
+                setPlayingUI(false);
+                localStorage.setItem(storageKey, '0');
+            });
+            music.addEventListener('error', (ev) => { setUnavailable(); console.error('Audio error', ev); });
+
+            if (wantPlay) setTimeout(tryPlay, 250); else setPlayingUI(false);
+
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                if (btn.classList.contains('unavailable')) return;
+                if (music.paused) { try { await music.play(); } catch { setPlayingUI(false); } }
+                else { music.pause(); }
+            });
+
+            setTimeout(() => {
+                if (music.readyState === 0) {
+                    fetch(music.getAttribute('src'), { method: 'HEAD' })
+                      .then(r => { if (!r.ok) setUnavailable(); })
+                      .catch(() => setUnavailable());
+                }
+            }, 600);
+
+            const gestureHandler = () => {
+                if (localStorage.getItem(storageKey) === '1' && music.paused && !btn.classList.contains('unavailable')) {
+                    music.play().catch(() => setPlayingUI(false));
+                }
+                window.removeEventListener('pointerdown', gestureHandler);
+            };
+            window.addEventListener('pointerdown', gestureHandler, { once: true });
+        })();
+    </script>
+</body>
+</html>
