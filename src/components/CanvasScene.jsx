@@ -35,7 +35,7 @@ export default function CanvasScene(){
     const scene = new THREE.Scene()
     sceneRef.current = scene
     const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000)
-    const initialCameraPosition = new THREE.Vector3(103, -30, 0) // More zoomed out position
+    const initialCameraPosition = new THREE.Vector3(200, 80, -60) // More zoomed out position
     camera.position.copy(initialCameraPosition)
 
     const renderer = new THREE.WebGLRenderer({ antialias:true })
@@ -79,12 +79,12 @@ export default function CanvasScene(){
 
     const gltfLoader = new GLTFLoader()
     const planetsMeta = [
-      { name: 'contact', url: '/assets/mercury.glb', position:{x:-60,y:0,z:-8}, scale:5 },
-      { name: 'skills', url: '/assets/venus.glb', position:{x:-35,y:30,z:-12}, scale:5 },
-      { name: 'about', url: '/assets/earth.glb', position:{x:0,y:40,z:-16}, scale:0.1 },
-      { name: 'projects', url: '/assets/mars.glb', position:{x:50,y:1.2,z:-20}, scale:20 },
-      { name: 'leadership', url: '/assets/jupiter.glb', position:{x:40,y:-40,z:-26}, scale:7 },
-      { name: 'education', url: '/assets/saturn.glb', position:{x:-10,y:-30,z:0}, scale:0.1, ring:{ textureUrl: 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/saturnringcolor.jpg', innerRadius:6, outerRadius:10 } }
+      { name: 'contact', url: '/assets/mercury.glb', position:{x:-60,y:0,z:0}, scale:5 },
+      { name: 'skills', url: '/assets/venus.glb', position:{x:-35,y:-5,z:-2}, scale:5 },
+      { name: 'about', url: '/assets/earth.glb', position:{x:0,y:0,z:0}, scale:0.1 },
+      { name: 'projects', url: '/assets/mars.glb', position:{x:40,y:0,z:0}, scale:20 },
+      { name: 'leadership', url: '/assets/jupiter.glb', position:{x:80,y:0,z:0}, scale:7 },
+      { name: 'education', url: '/assets/saturn.glb', position:{x:120,y:0,z:0}, scale:0.1, ring:{ textureUrl: 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/141228/saturnringcolor.jpg', innerRadius:6, outerRadius:10 } }
     ]
 
     let loadedPlanets = 0
