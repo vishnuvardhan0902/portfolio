@@ -80,7 +80,7 @@ export default function CanvasScene(){
     const gltfLoader = new GLTFLoader()
     const planetsMeta = [
       { name: 'contact', url: '/assets/mercury.glb', position:{x:-60,y:0,z:0}, scale:5 },
-      { name: 'skills', url: '/assets/venus.glb', position:{x:-35,y:-5,z:-2}, scale:5 },
+      { name: 'skills', url: '/assets/venus.glb', position:{x:-35,y:0,z:0}, scale:0.08 },
       { name: 'about', url: '/assets/earth.glb', position:{x:0,y:0,z:0}, scale:0.1 },
       { name: 'projects', url: '/assets/mars.glb', position:{x:40,y:0,z:0}, scale:20 },
       { name: 'leadership', url: '/assets/jupiter.glb', position:{x:80,y:0,z:0}, scale:7 },
@@ -144,7 +144,7 @@ export default function CanvasScene(){
     // cinematic config (similar to original)
     const planetCinematic = {
       contact: { fovTarget: 36, distanceMul: 1.0, xFactor: 0.12, yFactor: 0.06, duration: 1.4 },
-      skills:  { fovTarget: 38, distanceMul: 1.0, xFactor: 0,    yFactor: 1,    duration: 1.3 },
+      skills:  { fovTarget: 38, distanceMul: 0.6, xFactor: 0,    yFactor: 1,    duration: 1.3 },
       about:   { fovTarget: 34, distanceMul: 1.0, xFactor: 0.15, yFactor: 0.08, duration: 1.3 },
       projects:{ fovTarget: 40, distanceMul: 1.0, xFactor: 0.10, yFactor: 0.06, duration: 1.5 },
       leadership:{ fovTarget: 42, distanceMul: 1.0, xFactor: 0.18, yFactor: 0.10, duration: 1.6 },
